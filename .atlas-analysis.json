@@ -1,0 +1,56 @@
+{
+  "projectType": "infrastructure",
+  "projectName": "Frites 2026 Mirror Driver",
+  "projectDescription": "Automated GitHub Actions workflow that mirrors a GitLab repository to GitHub every 10 minutes.",
+  "theme": "aspen",
+  "primaryColor": "#FC6D26",
+  "lightColor": "#FCA326",
+  "darkColor": "#E24329",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          "introduction",
+          "how-it-works"
+        ]
+      },
+      {
+        "group": "Setup",
+        "pages": [
+          "setup/prerequisites",
+          "setup/configuration",
+          "setup/deployment"
+        ]
+      },
+      {
+        "group": "Operations",
+        "pages": [
+          "operations/monitoring",
+          "operations/troubleshooting",
+          "operations/updating-schedule"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/workflow-structure",
+          "reference/secrets",
+          "reference/faq"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated GitLab to GitHub mirroring",
+    "Configurable sync schedule (every 10 minutes)",
+    "Manual workflow dispatch support",
+    "Full repository mirror including all branches and tags"
+  ],
+  "publicApiSurface": [
+    "GitLab → GitHub Mirror workflow",
+    "FRITES_2026_MIRROR_TOKEN secret",
+    "workflow_dispatch trigger",
+    "Scheduled cron trigger (*/10 * * * *)"
+  ]
+}

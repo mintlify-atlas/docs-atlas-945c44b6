@@ -1,0 +1,202 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues with the GitLab to GitHub mirror workflow and how to resolve them.'
+keywords: ['troubleshooting', 'errors', 'authentication', 'mirror failures']
+---
+
+This guide covers common issues you may encounter with the Frites 2026 Mirror Driver and how to resolve them.
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="Authentication failures">
+    **Symptoms:**
+    - Workflow fails during the "Push to GitHub mirror" step
+    - Error message: `Authentication failed` or `invalid credentials`
+    - Error message: `403 Forbidden`
+
+    **Cause:**
+    The `FRITES_2026_MIRROR_TOKEN` secret is either invalid, expired, or missing the required permissions.
+
+    **Solution:**
+    <Steps>
+      <Step title="Verify the secret exists">
+        Go to **Settings** → **Secrets and variables** → **Actions** and confirm `FRITES_2026_MIRROR_TOKEN` is listed.
+      </Step>
+      <Step title="Generate a new token">
+        Create a new GitHub personal access token with the `repo` scope:
+        1. Go to GitHub **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+        2. Click **Generate new token (classic)**
+        3. Select the **repo** scope (all checkboxes under it)
+        4. Set an expiration date or choose no expiration
+        5. Click **Generate token** and copy it immediately
+      </Step>
+      <Step title="Update the secret">
+        Go back to **Settings** → **Secrets and variables** → **Actions**, click **FRITES_2026_MIRROR_TOKEN**, and update it with the new token value.
+      </Step>
+      <Step title="Test the workflow">
+        Manually trigger the workflow to verify the new token works.
+      </Step>
+    </Steps>
+
+    <Warning>
+    Personal access tokens expire. Set a calendar reminder to rotate the token before it expires.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Network connectivity issues">
+    **Symptoms:**
+    - Workflow fails during "Clone GitLab repo" or "Push to GitHub mirror"
+    - Error message: `Connection timed out` or `Could not resolve host`
+    - Intermittent failures that succeed on retry
+
+    **Cause:**
+    Temporary network issues between GitHub Actions runners and GitLab/GitHub servers.
+
+    **Solution:**
+    <Steps>
+      <Step title="Re-run the workflow">
+        Click **Re-run failed jobs** in the Actions tab. Most network issues are temporary.
+      </Step>
+      <Step title="Check service status">
+        - GitLab status: https://status.gitlab.com
+        - GitHub status: https://www.githubstatus.com
+      </Step>
+      <Step title="Add retry logic">
+        If network issues persist, consider modifying the workflow to retry failed operations (requires editing the workflow file).
+      </Step>
+    </Steps>
+
+    <Note>
+    GitHub Actions runners have high availability, but occasional network blips can occur. A single failure doesn't indicate a systemic problem.
+    </Note>
+  </Accordion>
+
+  <Accordion title="GitLab repository access problems">
+    **Symptoms:**
+    - Workflow fails during "Clone GitLab repo" step
+    - Error message: `Repository not found` or `Access denied`
+    - Error message: `fatal: could not read from remote repository`
+
+    **Cause:**
+    The GitLab repository URL is incorrect, the repository has been moved/deleted, or it's not publicly accessible.
+
+    **Solution:**
+    <Steps>
+      <Step title="Verify repository URL">
+        Check that `https://gitlab.com/ftc-civ/frites/2026.git` is accessible in a browser when logged out.
+      </Step>
+      <Step title="Check repository visibility">
+        Ensure the GitLab repository is public. Private repositories require authentication, which would need to be added to the workflow.
+      </Step>
+      <Step title="Test the clone command">
+        Try cloning the repository locally to verify it's accessible:
+        ```bash
+        git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git test-repo.git
+        ```
+      </Step>
+      <Step title="Update the workflow if needed">
+        If the repository URL has changed, update the workflow file at `.github/workflows/gitlab-mirror.yaml`.
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="GitHub push failures">
+    **Symptoms:**
+    - "Clone GitLab repo" succeeds but "Push to GitHub mirror" fails
+    - Error message: `failed to push some refs`
+    - Error message: `Permission denied`
+
+    **Cause:**
+    The token lacks permissions, the GitHub repository doesn't exist, or branch protection rules are blocking the push.
+
+    **Solution:**
+    <Steps>
+      <Step title="Verify the GitHub repository exists">
+        Confirm `https://github.com/Thibault-Monnier/frites-2026` is accessible.
+      </Step>
+      <Step title="Check token permissions">
+        Ensure the token has the `repo` scope (full control of private repositories).
+      </Step>
+      <Step title="Review branch protection rules">
+        Go to **Settings** → **Branches** and check if protection rules are preventing force pushes. Mirror operations use `--mirror` which force updates all references.
+      </Step>
+      <Step title="Verify repository ownership">
+        Confirm the token belongs to a user with write access to the repository.
+      </Step>
+    </Steps>
+
+    <Warning>
+    The `--mirror` flag force updates all references. Ensure no one is directly committing to the GitHub mirror, as those commits will be overwritten.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Rate limiting issues">
+    **Symptoms:**
+    - Workflow fails with error: `API rate limit exceeded`
+    - Error message: `You have exceeded a secondary rate limit`
+
+    **Cause:**
+    GitHub or GitLab API rate limits have been exceeded. This is rare for mirror operations but can occur with very large repositories or frequent manual triggers.
+
+    **Solution:**
+    <Steps>
+      <Step title="Wait for rate limit reset">
+        Rate limits typically reset within an hour. Check the error message for the reset time.
+      </Step>
+      <Step title="Reduce sync frequency">
+        If rate limiting is recurring, consider changing the schedule from every 10 minutes to every 15 or 30 minutes.
+      </Step>
+      <Step title="Check for other workflows">
+        Review if other workflows in the repository are consuming API quota.
+      </Step>
+    </Steps>
+
+    <Note>
+    GitHub Actions has generous rate limits for git operations. Rate limiting is uncommon unless you're triggering the workflow manually very frequently.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Workflow not running on schedule">
+    **Symptoms:**
+    - No workflow runs appear in the Actions tab
+    - Last run was more than 10 minutes ago
+    - Scheduled runs are missing
+
+    **Cause:**
+    The workflow file has syntax errors, Actions are disabled, or the repository is inactive.
+
+    **Solution:**
+    <Steps>
+      <Step title="Check if Actions are enabled">
+        Go to **Settings** → **Actions** → **General** and ensure Actions are enabled for this repository.
+      </Step>
+      <Step title="Validate workflow syntax">
+        Review the workflow file for YAML syntax errors. GitHub will display a warning banner if the workflow is invalid.
+      </Step>
+      <Step title="Trigger workflow manually">
+        Use the **Run workflow** button to test if the workflow can run at all.
+      </Step>
+      <Step title="Check repository activity">
+        GitHub may disable scheduled workflows on inactive repositories. Any commit or manual workflow run will re-enable them.
+      </Step>
+    </Steps>
+
+    <Info>
+    GitHub automatically disables scheduled workflows after 60 days of repository inactivity. You'll receive an email notification before this happens.
+    </Info>
+  </Accordion>
+</AccordionGroup>
+
+## Getting more help
+
+If you've tried the solutions above and still have issues:
+
+1. Review the full workflow logs for error details
+2. Check the workflow file for any recent changes
+3. Verify both the source (GitLab) and destination (GitHub) repositories are accessible
+4. Test the git operations locally to isolate the problem
+
+<Tip>
+When asking for help, include the full error message from the workflow logs and the specific step that failed.
+</Tip>

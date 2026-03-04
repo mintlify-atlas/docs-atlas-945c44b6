@@ -1,0 +1,40 @@
+---
+title: Introduction
+description: Learn about the Frites 2026 Mirror Driver and how it keeps your GitLab repository synced to GitHub
+---
+
+## What is Frites 2026 Mirror Driver?
+
+The Frites 2026 Mirror Driver is an automated infrastructure solution that keeps the `ftc-civ/frites/2026` GitLab repository continuously synchronized with `Thibault-Monnier/frites-2026` on GitHub. Using GitHub Actions, it runs every 10 minutes to ensure both repositories stay in perfect sync.
+
+## Why mirror repositories?
+
+Mirroring enables you to maintain a single source of truth while making your code accessible across multiple platforms. This is particularly useful when:
+
+- Your primary development happens on GitLab, but you want GitHub visibility
+- You need to integrate with GitHub-specific tools and services
+- Team members prefer different platforms for code review and collaboration
+- You want redundancy and cross-platform availability
+
+## Key benefits
+
+- **Automated synchronization**: Runs every 10 minutes without manual intervention
+- **Complete repository mirror**: All branches, tags, and commits are synced
+- **Cross-platform collaboration**: Work on GitLab, share on GitHub
+- **Zero maintenance**: Set it up once and forget about it
+- **Manual trigger available**: Run the sync on-demand when needed
+
+<Info>
+  The mirror driver uses `git clone --mirror` and `git push --mirror` to ensure a complete, byte-for-byte replica of your repository.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="How it works" icon="gear" href="/how-it-works">
+    Understand the technical implementation and workflow architecture
+  </Card>
+  <Card title="View on GitHub" icon="github" href="https://github.com/Thibault-Monnier/frites-2026">
+    Check out the mirrored repository
+  </Card>
+</CardGroup>

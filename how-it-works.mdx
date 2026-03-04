@@ -1,0 +1,115 @@
+---
+title: How it works
+description: Technical deep dive into the mirroring workflow architecture and implementation
+---
+
+## Workflow architecture
+
+The Frites 2026 Mirror Driver uses a GitHub Actions workflow that runs automatically on a schedule. The workflow consists of two main steps: cloning the source repository from GitLab and pushing it to the target repository on GitHub.
+
+### Workflow triggers
+
+The workflow is triggered in two ways:
+
+```yaml
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+```
+
+- **Scheduled execution**: The cron expression `*/10 * * * *` runs the workflow every 10 minutes
+- **Manual execution**: The `workflow_dispatch` trigger allows you to run the sync on-demand from the GitHub Actions UI
+
+<Note>
+  The 10-minute interval ensures your GitHub mirror is always up-to-date without overloading the systems.
+</Note>
+
+## The mirroring process
+
+### Step 1: Clone the GitLab repository
+
+The first step creates a complete mirror of the source repository:
+
+```yaml
+- name: Clone GitLab repo
+  run: |
+    git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+```
+
+The `git clone --mirror` command creates a bare repository that includes:
+
+- All branches (not just the default branch)
+- All tags
+- All commits and history
+- All refs exactly as they exist in the source
+
+<Info>
+  A mirror clone is different from a regular clone. It creates a bare repository optimized for pushing to another remote, preserving all references exactly as they are.
+</Info>
+
+### Step 2: Push to the GitHub mirror
+
+The second step pushes the entire mirrored repository to GitHub:
+
+```yaml
+- name: Push to GitHub mirror
+  run: |
+    cd repo.git
+    git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+```
+
+The `git push --mirror` command:
+
+- Pushes all branches and tags
+- Deletes refs that no longer exist in the source
+- Ensures the destination is an exact replica of the source
+- Forces updates when necessary to maintain synchronization
+
+<Warning>
+  The `--mirror` flag means the destination repository will be overwritten to match the source exactly. Any commits made directly to the GitHub repository will be lost on the next sync.
+</Warning>
+
+## Authentication mechanism
+
+The workflow uses a GitHub personal access token for authentication:
+
+```
+https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/...
+```
+
+- The token is stored as a GitHub secret named `FRITES_2026_MIRROR_TOKEN`
+- The `x-access-token` prefix is GitHub's authentication scheme for HTTPS
+- The token must have `repo` permissions to push to the target repository
+
+<Note>
+  Using secrets keeps your authentication tokens secure and prevents them from being exposed in logs or workflow files.
+</Note>
+
+## Complete workflow code
+
+Here's the full workflow implementation:
+
+```yaml
+name: GitLab → GitHub Mirror
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone GitLab repo
+        run: |
+          git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+
+      - name: Push to GitHub mirror
+        run: |
+          cd repo.git
+          git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+```
+
+This simple yet powerful workflow ensures your repositories stay synchronized automatically, requiring no manual intervention.

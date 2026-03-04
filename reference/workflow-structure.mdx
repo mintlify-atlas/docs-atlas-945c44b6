@@ -1,0 +1,145 @@
+---
+title: Workflow structure
+description: Complete reference for the GitLab to GitHub mirror workflow YAML structure
+---
+
+The mirror workflow is defined in `.github/workflows/gitlab-mirror.yaml` and automatically synchronizes the GitLab repository to GitHub.
+
+## Workflow name
+
+```yaml
+name: GitLab → GitHub Mirror
+```
+
+The workflow name appears in the GitHub Actions UI and helps identify this automation among other workflows.
+
+## Triggers
+
+The workflow runs on two triggers:
+
+### Schedule trigger
+
+```yaml
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+```
+
+<ParamField path="schedule.cron" type="string" required>
+  The cron expression that defines when the workflow runs automatically.
+</ParamField>
+
+The expression `*/10 * * * *` breaks down as:
+
+- `*/10` - Every 10 minutes
+- `*` - Every hour
+- `*` - Every day of the month
+- `*` - Every month
+- `*` - Every day of the week
+
+This means the mirror operation runs **every 10 minutes, 24/7**.
+
+### Manual trigger
+
+```yaml
+workflow_dispatch:
+```
+
+<ParamField path="workflow_dispatch" type="object">
+  Enables manual triggering of the workflow from the GitHub Actions UI. No additional configuration is required.
+</ParamField>
+
+You can manually trigger the workflow at any time from the Actions tab in GitHub without waiting for the next scheduled run.
+
+## Jobs
+
+The workflow contains a single job named `mirror`.
+
+### Runner environment
+
+```yaml
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+```
+
+<ParamField path="runs-on" type="string" default="ubuntu-latest">
+  Specifies the GitHub-hosted runner environment. `ubuntu-latest` provides a Linux environment with git pre-installed.
+</ParamField>
+
+## Steps
+
+The mirror job executes two sequential steps:
+
+### Step 1: Clone GitLab repo
+
+```yaml
+- name: Clone GitLab repo
+  run: |
+    git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+```
+
+<ParamField path="steps[0].name" type="string">
+  Clone GitLab repo
+</ParamField>
+
+<ParamField path="steps[0].run" type="string">
+  Executes `git clone --mirror` to create a bare repository clone that includes all refs (branches, tags, notes).
+</ParamField>
+
+The `--mirror` flag is crucial because it:
+- Clones all branches and tags
+- Sets up the clone as a bare repository
+- Configures remote tracking for all refs
+- Preserves the complete repository structure
+
+The cloned repository is saved to a directory named `repo.git`.
+
+### Step 2: Push to GitHub mirror
+
+```yaml
+- name: Push to GitHub mirror
+  run: |
+    cd repo.git
+    git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+```
+
+<ParamField path="steps[1].name" type="string">
+  Push to GitHub mirror
+</ParamField>
+
+<ParamField path="steps[1].run" type="string">
+  Changes into the cloned repository directory and executes `git push --mirror` to synchronize all refs to the GitHub destination.
+</ParamField>
+
+The `--mirror` flag on push ensures:
+- All branches are pushed
+- All tags are pushed
+- Deleted refs in the source are deleted in the destination
+- The mirror stays in perfect sync with the source
+
+The authentication uses a personal access token injected via GitHub Secrets, formatted as `https://x-access-token:TOKEN@github.com/...`.
+
+## Complete workflow file
+
+```yaml
+name: GitLab → GitHub Mirror
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone GitLab repo
+        run: |
+          git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+
+      - name: Push to GitHub mirror
+        run: |
+          cd repo.git
+          git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+```

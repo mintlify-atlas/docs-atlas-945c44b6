@@ -1,0 +1,182 @@
+---
+title: Deployment
+description: Deploy the Frites 2026 Mirror Driver workflow to your GitHub repository
+---
+
+This guide walks you through deploying the mirror workflow to your GitHub repository.
+
+## Deploy the workflow
+
+<Steps>
+  <Step title="Create the workflows directory">
+    In your repository, create the directory structure for GitHub Actions:
+    
+    ```bash
+    mkdir -p .github/workflows
+    ```
+    
+    <Note>
+    The `.github/workflows` directory is where GitHub looks for workflow files. The directory name must be exact (including the leading dot).
+    </Note>
+  </Step>
+
+  <Step title="Create the workflow file">
+    Create a new file named `gitlab-mirror.yaml` in the `.github/workflows` directory with the following content:
+    
+    ```yaml .github/workflows/gitlab-mirror.yaml
+    name: GitLab → GitHub Mirror
+    
+    on:
+      schedule:
+        - cron: "*/10 * * * *"
+      workflow_dispatch:
+    
+    jobs:
+      mirror:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Clone GitLab repo
+            run: |
+              git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+    
+          - name: Push to GitHub mirror
+            run: |
+              cd repo.git
+              git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+    ```
+    
+    <Warning>
+    Ensure you've created the `FRITES_2026_MIRROR_TOKEN` secret before deploying this workflow, or it will fail to authenticate.
+    </Warning>
+  </Step>
+
+  <Step title="Commit and push the workflow">
+    Add the workflow file to git and push it to GitHub:
+    
+    ```bash
+    git add .github/workflows/gitlab-mirror.yaml
+    git commit -m "Add GitLab to GitHub mirror workflow"
+    git push
+    ```
+    
+    GitHub will automatically detect the new workflow file once it's pushed to the repository.
+  </Step>
+
+  <Step title="Verify workflow appears in Actions">
+    Navigate to your repository on GitHub and click the **Actions** tab.
+    
+    You should see the "GitLab → GitHub Mirror" workflow listed.
+    
+    <Info>
+    If you don't see the workflow, ensure:
+    - GitHub Actions is enabled in your repository settings
+    - The workflow file is in the correct location (`.github/workflows/`)
+    - The YAML syntax is valid
+    </Info>
+  </Step>
+</Steps>
+
+## Trigger the first workflow run
+
+<Steps>
+  <Step title="Navigate to workflow">
+    In the **Actions** tab, click on the "GitLab → GitHub Mirror" workflow in the left sidebar.
+  </Step>
+
+  <Step title="Manually trigger the workflow">
+    Click the **Run workflow** dropdown button on the right side.
+    
+    Ensure the correct branch is selected (usually `main` or `master`).
+    
+    Click **Run workflow**.
+    
+    <Note>
+    The `workflow_dispatch` trigger in the workflow configuration enables manual triggering. This is useful for testing before the scheduled runs begin.
+    </Note>
+  </Step>
+
+  <Step title="Monitor the workflow execution">
+    The workflow run will appear in the list. Click on it to view details.
+    
+    You'll see the workflow progress through these steps:
+    1. Set up the Ubuntu runner
+    2. Clone GitLab repo
+    3. Push to GitHub mirror
+    
+    <Info>
+    The first run may take 1-2 minutes depending on the repository size.
+    </Info>
+  </Step>
+</Steps>
+
+## Verify successful execution
+
+<Steps>
+  <Step title="Check workflow status">
+    Once the workflow completes, verify it shows a green checkmark indicating success.
+    
+    If the workflow fails, click on the failed step to view error logs.
+  </Step>
+
+  <Step title="Verify mirror repository">
+    Navigate to the target GitHub repository:
+    
+    ```
+    https://github.com/Thibault-Monnier/frites-2026
+    ```
+    
+    Confirm that:
+    - All branches from the GitLab repository are present
+    - All tags are mirrored
+    - The commit history matches the source
+  </Step>
+
+  <Step title="Check scheduled runs">
+    The workflow will now run automatically every 10 minutes according to the cron schedule.
+    
+    You can view upcoming and past runs in the Actions tab.
+    
+    <Note>
+    GitHub Actions scheduled workflows may have a delay of a few minutes from the exact scheduled time during periods of high platform usage.
+    </Note>
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Authentication failures
+
+If you see errors like `remote: Invalid username or password`:
+
+- Verify the `FRITES_2026_MIRROR_TOKEN` secret is set correctly
+- Ensure the token has `repo` scope
+- Check that the token hasn't expired
+
+### Repository not found errors
+
+If you see `repository not found` errors:
+
+- Verify the target GitHub repository exists
+- Ensure the repository URL in the workflow file is correct
+- Confirm the token has access to the target repository
+
+### Permission denied errors
+
+If you see `permission denied` errors:
+
+- Verify the token has write access to the target repository
+- Check that the repository isn't archived or locked
+- Ensure organization permissions allow the operation (if applicable)
+
+<Warning>
+If the workflow fails multiple times, GitHub may disable the scheduled workflow. You'll need to manually re-enable it in the Actions tab.
+</Warning>
+
+## Next steps
+
+Your mirror workflow is now deployed and running. The workflow will automatically sync your GitLab repository to GitHub every 10 minutes.
+
+To monitor the workflow:
+- View workflow runs in the **Actions** tab
+- Set up [workflow notifications](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/notifications-for-workflow-runs) for failures
+- Review the workflow logs periodically to ensure smooth operation

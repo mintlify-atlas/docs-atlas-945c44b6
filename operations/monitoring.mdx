@@ -1,0 +1,145 @@
+---
+title: 'Monitoring the mirror'
+description: 'Learn how to monitor your GitLab to GitHub mirror workflow and verify synchronization status.'
+keywords: ['monitoring', 'workflow runs', 'github actions', 'sync status']
+---
+
+The Frites 2026 Mirror Driver runs automatically every 10 minutes via GitHub Actions. This guide shows you how to monitor the mirror and verify it's working correctly.
+
+## View workflow runs
+
+You can view all workflow runs in the GitHub Actions tab:
+
+<Steps>
+  <Step title="Navigate to the Actions tab">
+    Go to your GitHub repository and click the **Actions** tab at the top.
+  </Step>
+  <Step title="Select the workflow">
+    Click on **GitLab → GitHub Mirror** in the left sidebar to see all runs of this specific workflow.
+  </Step>
+</Steps>
+
+Each run shows:
+- The trigger (scheduled or manual)
+- Start time and duration
+- Status (success, failure, or in progress)
+- The commit hash from GitLab
+
+## Understand workflow status
+
+Workflow runs can have three different statuses:
+
+<AccordionGroup>
+  <Accordion title="Success (green checkmark)">
+    The mirror completed successfully. Both steps (cloning from GitLab and pushing to GitHub) completed without errors.
+  </Accordion>
+  <Accordion title="Failure (red X)">
+    The mirror failed. This could be due to authentication issues, network problems, or repository access errors. Click the run to view logs and identify the issue.
+  </Accordion>
+  <Accordion title="In progress (yellow circle)">
+    The mirror is currently running. This typically takes 1-3 minutes depending on repository size and network conditions.
+  </Accordion>
+</AccordionGroup>
+
+## View workflow logs
+
+To see detailed logs for a specific run:
+
+<Steps>
+  <Step title="Click on a workflow run">
+    From the Actions tab, click on any workflow run to see its details.
+  </Step>
+  <Step title="Click on the job name">
+    Click on **mirror** to expand the job details.
+  </Step>
+  <Step title="Expand individual steps">
+    Click on either:
+    - **Clone GitLab repo** - Shows the output of cloning from GitLab
+    - **Push to GitHub mirror** - Shows the output of pushing to GitHub
+  </Step>
+</Steps>
+
+The logs show:
+- Git clone progress and object counts
+- Push progress and reference updates
+- Any error messages if the workflow failed
+
+<Note>
+Logs are retained for 90 days by default. You can download logs by clicking the gear icon and selecting "Download log archive".
+</Note>
+
+## Set up notifications
+
+You can configure GitHub to notify you when the mirror workflow fails:
+
+<Steps>
+  <Step title="Access notification settings">
+    Click your profile picture in the top right, then go to **Settings** → **Notifications**.
+  </Step>
+  <Step title="Configure Actions notifications">
+    Scroll down to **GitHub Actions** and ensure **Send notifications for failed workflows** is enabled.
+  </Step>
+  <Step title="Choose notification method">
+    You can receive notifications via:
+    - Email
+    - Web notifications
+    - Mobile (if you have the GitHub app)
+  </Step>
+</Steps>
+
+<Tip>
+You can also watch the repository and select "Custom" to be notified only about Actions failures.
+</Tip>
+
+## Check the last sync time
+
+To verify when the mirror last ran successfully:
+
+1. Go to the **Actions** tab
+2. Look at the most recent workflow run with a green checkmark
+3. The timestamp shows when the sync completed
+
+<Info>
+The workflow runs every 10 minutes. If you don't see a recent successful run, check the logs to identify any issues.
+</Info>
+
+## Verify the mirror is up to date
+
+To confirm your GitHub mirror matches the GitLab repository:
+
+<Steps>
+  <Step title="Compare commit histories">
+    Open both repositories and compare the latest commit hash on the main branch.
+  </Step>
+  <Step title="Check the timestamp">
+    The most recent commit on GitHub should be no more than 10 minutes old (assuming there have been recent commits to GitLab).
+  </Step>
+  <Step title="Review the workflow logs">
+    The **Push to GitHub mirror** step shows which references were updated. Look for lines like:
+    ```
+    * [new branch]      main -> main
+    ```
+    or
+    ```
+    main -> main (forced update)
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+If the mirror shows as up to date but commits are missing, check that the workflow has the necessary permissions to push to the GitHub repository.
+</Warning>
+
+## Manual verification
+
+You can manually trigger the workflow to test the mirror immediately:
+
+1. Go to the **Actions** tab
+2. Click **GitLab → GitHub Mirror** in the sidebar
+3. Click **Run workflow** on the right
+4. Select the branch and click **Run workflow**
+
+This is useful for:
+- Testing after configuration changes
+- Forcing an immediate sync
+- Verifying the workflow works after updating tokens

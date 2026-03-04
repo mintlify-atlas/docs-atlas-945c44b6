@@ -1,0 +1,159 @@
+---
+title: FAQ
+description: Frequently asked questions about the GitLab to GitHub mirror workflow
+---
+
+Common questions about how the Frites 2026 mirror driver works and how to use it effectively.
+
+<AccordionGroup>
+  <Accordion title="What is git mirror vs regular clone?">
+    A `git clone --mirror` creates a **bare repository** that includes all refs (branches, tags, pull requests, notes) and maintains a complete replica of the source repository.
+    
+    Regular `git clone` only:
+    - Checks out the default branch
+    - Tracks only the branches you explicitly fetch
+    - Creates a working directory with files
+    
+    Mirror clone:
+    - Includes ALL branches and tags
+    - Includes remote-tracking refs
+    - No working directory (bare repository)
+    - Perfect for creating exact replicas
+    
+    When you `git push --mirror`, it synchronizes everything including deletions. If a branch is deleted in GitLab, it will be deleted in GitHub on the next mirror run.
+  </Accordion>
+
+  <Accordion title="Why every 10 minutes?">
+    The workflow runs every 10 minutes (`cron: "*/10 * * * *"`) to balance:
+    
+    **Freshness**: Changes appear in the GitHub mirror within 10 minutes maximum, which is acceptable for most use cases.
+    
+    **Resource usage**: Running every minute would consume 1,440 workflow minutes per day. Every 10 minutes uses only 144 minutes per day.
+    
+    **Rate limits**: Frequent API calls could trigger GitHub's rate limits or abuse detection systems.
+    
+    You can adjust the frequency by modifying the cron expression:
+    - `*/5 * * * *` - Every 5 minutes (288 minutes/day)
+    - `*/30 * * * *` - Every 30 minutes (48 minutes/day)
+    - `0 * * * *` - Every hour (24 minutes/day)
+    
+    GitHub provides 2,000 free workflow minutes per month for private repositories, and unlimited minutes for public repositories.
+  </Accordion>
+
+  <Accordion title="Can I mirror to multiple destinations?">
+    Yes! Add additional push steps to the workflow:
+    
+    ```yaml
+    - name: Push to GitHub mirror
+      run: |
+        cd repo.git
+        git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+    
+    - name: Push to second mirror
+      run: |
+        cd repo.git
+        git push --mirror https://x-access-token:${{ secrets.SECOND_MIRROR_TOKEN }}@github.com/org/another-repo.git
+    
+    - name: Push to Bitbucket mirror
+      run: |
+        cd repo.git
+        git push --mirror https://${{ secrets.BITBUCKET_USERNAME }}:${{ secrets.BITBUCKET_APP_PASSWORD }}@bitbucket.org/workspace/repo.git
+    ```
+    
+    Each destination requires its own access token stored as a GitHub secret. The workflow will push to each mirror sequentially.
+  </Accordion>
+
+  <Accordion title="Does it preserve all branches and tags?">
+    Yes, absolutely. The `--mirror` flag ensures complete synchronization:
+    
+    **Preserved**:
+    - All branches (main, develop, feature branches, etc.)
+    - All tags (v1.0, v2.0, etc.)
+    - All commit history and metadata
+    - Branch protection rules are NOT mirrored (GitHub doesn't support this via git)
+    
+    **Synchronized deletions**:
+    - If you delete a branch in GitLab, it will be deleted in GitHub on the next mirror run
+    - If you delete a tag in GitLab, it will be deleted in GitHub
+    
+    This is true mirroring - the GitHub repository becomes an exact replica of the GitLab repository structure.
+  </Accordion>
+
+  <Accordion title="What happens if there are merge conflicts?">
+    **Short answer**: Merge conflicts cannot occur with this workflow.
+    
+    **Why**: The workflow uses `git push --mirror`, which is a **force operation**. The destination (GitHub) is completely overwritten to match the source (GitLab).
+    
+    This means:
+    - Any commits made directly to the GitHub mirror will be **overwritten** on the next sync
+    - The GitLab repository is always the source of truth
+    - The GitHub repository is read-only (for practical purposes)
+    
+    If you need bidirectional sync or want to accept changes from both sides, you would need a different approach:
+    - Use a merge-based workflow instead of mirror
+    - Implement conflict detection and manual resolution
+    - Consider using a tool designed for bidirectional sync
+    
+    **Best practice**: Treat the GitHub mirror as read-only. All development should happen in the GitLab repository.
+  </Accordion>
+
+  <Accordion title="How much does this cost (GitHub Actions minutes)?">
+    The cost depends on your GitHub plan and repository visibility:
+    
+    **Public repositories**: Unlimited free minutes
+    
+    **Private repositories**:
+    - Free tier: 2,000 minutes/month
+    - Team: 3,000 minutes/month
+    - Enterprise: 50,000 minutes/month
+    
+    **This workflow's usage**:
+    - Runs every 10 minutes = 144 runs per day = 4,320 runs per month
+    - Each run takes approximately 15-30 seconds (depending on repository size)
+    - Total: ~1,080 to 2,160 minutes per month
+    
+    For the Frites 2026 project:
+    - If the repository is **public**: No cost
+    - If the repository is **private**: Fits within the free tier (2,000 minutes)
+    
+    **Optimization tips**:
+    - Reduce frequency to every 15 or 30 minutes to save minutes
+    - Use `workflow_dispatch` to trigger manually when needed instead of scheduling
+    - For very large repositories, consider using shallow clones with `--depth=1` (though this breaks true mirroring)
+  </Accordion>
+
+  <Accordion title="Can I use this for private repositories?">
+    Yes, this workflow supports both public and private repositories.
+    
+    **For private GitLab repositories**:
+    - The clone URL must include authentication: `https://oauth2:TOKEN@gitlab.com/...`
+    - Store the GitLab token as a GitHub secret
+    - Update the clone step:
+    
+    ```yaml
+    - name: Clone GitLab repo
+      run: |
+        git clone --mirror https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ftc-civ/frites/2026.git repo.git
+    ```
+    
+    **For private GitHub repositories**:
+    - The workflow already uses token authentication for the push step
+    - Ensure `FRITES_2026_MIRROR_TOKEN` has access to the private repository
+    - The token owner must have write access
+    
+    **Security considerations**:
+    - Secrets are automatically masked in GitHub Actions logs
+    - Never echo or print secrets in workflow steps
+    - Use fine-grained tokens when possible to limit scope
+    - Regularly rotate tokens (every 90 days recommended)
+    
+    The current Frites 2026 workflow mirrors from a **public** GitLab repository (`https://gitlab.com/ftc-civ/frites/2026.git`) to a GitHub repository, so no GitLab authentication is required.
+  </Accordion>
+</AccordionGroup>
+
+## Additional resources
+
+- [Workflow structure reference](/reference/workflow-structure) - Complete YAML documentation
+- [Secrets reference](/reference/secrets) - Token management and security
+- [GitHub Actions documentation](https://docs.github.com/en/actions) - Official GitHub Actions docs
+- [Git mirror documentation](https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---mirror) - Understanding `--mirror` flag

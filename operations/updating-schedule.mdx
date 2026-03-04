@@ -1,0 +1,217 @@
+---
+title: 'Updating the sync schedule'
+description: 'Learn how to modify the mirror synchronization schedule and trigger manual syncs.'
+keywords: ['schedule', 'cron', 'workflow dispatch', 'sync frequency']
+---
+
+The Frites 2026 Mirror Driver uses a cron schedule to automatically sync your GitLab repository to GitHub. This guide shows you how to modify the sync frequency.
+
+## Understanding cron syntax
+
+The workflow uses cron expressions to define when it runs. A cron expression consists of five fields:
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, Sunday to Saturday)
+│ │ │ │ │
+* * * * *
+```
+
+<Note>
+All cron schedules in GitHub Actions use UTC timezone. If you're in a different timezone, you'll need to adjust the hour field accordingly.
+</Note>
+
+## Current schedule
+
+The workflow currently runs every 10 minutes:
+
+```yaml
+schedule:
+  - cron: "*/10 * * * *"
+```
+
+Breaking this down:
+- `*/10` - Every 10 minutes
+- `*` - Every hour
+- `*` - Every day of the month
+- `*` - Every month
+- `*` - Every day of the week
+
+## Common schedule examples
+
+Here are some common sync schedules you might want to use:
+
+<CodeGroup>
+
+```yaml Every 5 minutes
+schedule:
+  - cron: "*/5 * * * *"
+```
+
+```yaml Every 15 minutes
+schedule:
+  - cron: "*/15 * * * *"
+```
+
+```yaml Every 30 minutes
+schedule:
+  - cron: "*/30 * * * *"
+```
+
+```yaml Every hour
+schedule:
+  - cron: "0 * * * *"
+```
+
+```yaml Every 2 hours
+schedule:
+  - cron: "0 */2 * * *"
+```
+
+```yaml Every 6 hours
+schedule:
+  - cron: "0 */6 * * *"
+```
+
+```yaml Daily at midnight UTC
+schedule:
+  - cron: "0 0 * * *"
+```
+
+```yaml Weekdays at 9 AM UTC
+schedule:
+  - cron: "0 9 * * 1-5"
+```
+
+</CodeGroup>
+
+<Tip>
+Use [crontab.guru](https://crontab.guru) to validate your cron expressions and see when they'll next run.
+</Tip>
+
+## How to edit the workflow file
+
+To change the sync schedule:
+
+<Steps>
+  <Step title="Navigate to the workflow file">
+    In your GitHub repository, go to `.github/workflows/gitlab-mirror.yaml`.
+  </Step>
+  <Step title="Edit the file">
+    Click the pencil icon to edit the file, or clone the repository and edit it locally.
+  </Step>
+  <Step title="Update the cron expression">
+    Find the `schedule` section and update the cron expression:
+    ```yaml
+    on:
+      schedule:
+        - cron: "*/30 * * * *"  # Change this line
+      workflow_dispatch:
+    ```
+  </Step>
+  <Step title="Commit the changes">
+    Commit your changes with a descriptive message like "Change mirror schedule to every 30 minutes".
+  </Step>
+</Steps>
+
+<Warning>
+The new schedule takes effect immediately after you commit the change. The workflow will run based on the new cron expression from that point forward.
+</Warning>
+
+## Complete workflow file example
+
+Here's what the complete workflow file looks like with a 30-minute schedule:
+
+```yaml .github/workflows/gitlab-mirror.yaml
+name: GitLab → GitHub Mirror
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone GitLab repo
+        run: |
+          git clone --mirror https://gitlab.com/ftc-civ/frites/2026.git repo.git
+
+      - name: Push to GitHub mirror
+        run: |
+          cd repo.git
+          git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/Thibault-Monnier/frites-2026.git
+```
+
+## Using workflow_dispatch for manual triggers
+
+The workflow includes `workflow_dispatch`, which allows you to trigger the mirror manually:
+
+```yaml
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:  # Enables manual triggering
+```
+
+This is useful for:
+- Testing the workflow after making changes
+- Forcing an immediate sync outside the regular schedule
+- Verifying the mirror works after rotating tokens
+
+### How to manually trigger the workflow
+
+<Steps>
+  <Step title="Go to the Actions tab">
+    Navigate to the **Actions** tab in your GitHub repository.
+  </Step>
+  <Step title="Select the workflow">
+    Click **GitLab → GitHub Mirror** in the left sidebar.
+  </Step>
+  <Step title="Run the workflow">
+    Click **Run workflow** on the right side, select the branch, and click **Run workflow** again.
+  </Step>
+</Steps>
+
+The workflow will start immediately and you can monitor its progress in the Actions tab.
+
+<Info>
+Manual triggers don't affect the scheduled runs. The workflow will continue to run on schedule regardless of how many times you manually trigger it.
+</Info>
+
+## Multiple schedules
+
+You can configure the workflow to run on multiple schedules:
+
+```yaml
+schedule:
+  - cron: "*/10 * * * *"    # Every 10 minutes
+  - cron: "0 0 * * *"       # Also at midnight daily
+```
+
+This allows you to combine frequent syncs during development with regular full syncs at specific times.
+
+## Considerations when choosing a schedule
+
+<AccordionGroup>
+  <Accordion title="Resource usage">
+    More frequent syncs consume more GitHub Actions minutes. While public repositories have unlimited minutes, you may want to be mindful of resource usage.
+  </Accordion>
+  <Accordion title="Repository size">
+    Larger repositories take longer to clone and push. Factor in the time each run takes when choosing your frequency.
+  </Accordion>
+  <Accordion title="Update frequency">
+    Consider how often commits are pushed to the GitLab repository. If commits are rare, hourly or daily syncs may be sufficient.
+  </Accordion>
+  <Accordion title="Rate limits">
+    Very frequent syncs (every minute or two) may approach GitHub or GitLab rate limits. Every 5-10 minutes is typically safe.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+The current 10-minute schedule provides a good balance between keeping the mirror up to date and avoiding unnecessary resource usage.
+</Tip>

@@ -1,0 +1,152 @@
+---
+title: Configuration
+description: Configure secrets and parameters for the Frites 2026 Mirror Driver
+---
+
+This guide walks you through configuring the necessary secrets and parameters for the mirror workflow.
+
+## Create a GitHub personal access token
+
+<Steps>
+  <Step title="Navigate to GitHub token settings">
+    Go to [GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens).
+  </Step>
+
+  <Step title="Generate new token">
+    Click **Generate new token** > **Generate new token (classic)**.
+    
+    You may be prompted to authenticate with your password or 2FA.
+  </Step>
+
+  <Step title="Configure token settings">
+    Set the following:
+    - **Note**: `Frites 2026 Mirror Token` (or any descriptive name)
+    - **Expiration**: Choose an expiration period (recommend 90 days or less for security)
+    - **Scopes**: Select `repo` (Full control of private repositories)
+    
+    <Warning>
+    The `repo` scope grants full access to your repositories. Keep this token secure and never commit it to source code.
+    </Warning>
+  </Step>
+
+  <Step title="Generate and copy token">
+    Click **Generate token** at the bottom of the page.
+    
+    Copy the generated token immediately - you won't be able to see it again.
+    
+    <Info>
+    Store the token in a secure password manager. If you lose it, you'll need to generate a new one.
+    </Info>
+  </Step>
+</Steps>
+
+## Add the secret to repository settings
+
+<Steps>
+  <Step title="Navigate to repository settings">
+    Go to your workflow repository on GitHub and click **Settings**.
+  </Step>
+
+  <Step title="Open secrets configuration">
+    In the left sidebar, expand **Secrets and variables** > click **Actions**.
+  </Step>
+
+  <Step title="Create new secret">
+    Click **New repository secret**.
+  </Step>
+
+  <Step title="Configure the secret">
+    Set the following:
+    - **Name**: `FRITES_2026_MIRROR_TOKEN`
+    - **Secret**: Paste the personal access token you created earlier
+    
+    Click **Add secret**.
+    
+    <Note>
+    The secret name must exactly match `FRITES_2026_MIRROR_TOKEN` as referenced in the workflow file.
+    </Note>
+  </Step>
+
+  <Step title="Verify secret creation">
+    You should see `FRITES_2026_MIRROR_TOKEN` listed in your repository secrets.
+    
+    The secret value will be hidden for security.
+  </Step>
+</Steps>
+
+## Configure repository URLs
+
+The workflow uses hardcoded repository URLs. If you need to mirror different repositories, you'll need to modify the workflow file.
+
+### Source GitLab repository
+
+The default source repository is:
+
+```
+https://gitlab.com/ftc-civ/frites/2026.git
+```
+
+To change this, update line 14 in the workflow file:
+
+```yaml
+git clone --mirror https://gitlab.com/your-org/your-repo.git repo.git
+```
+
+### Target GitHub repository
+
+The default target repository is:
+
+```
+https://github.com/Thibault-Monnier/frites-2026.git
+```
+
+To change this, update line 19 in the workflow file:
+
+```yaml
+git push --mirror https://x-access-token:${{ secrets.FRITES_2026_MIRROR_TOKEN }}@github.com/your-username/your-repo.git
+```
+
+<Warning>
+Ensure the target repository exists before running the workflow. The mirror operation will fail if the repository doesn't exist.
+</Warning>
+
+## Customize the schedule (optional)
+
+The workflow runs every 10 minutes by default:
+
+```yaml
+schedule:
+  - cron: "*/10 * * * *"
+```
+
+You can customize this schedule using cron syntax:
+
+<CodeGroup>
+```yaml Every 30 minutes
+schedule:
+  - cron: "*/30 * * * *"
+```
+
+```yaml Every hour
+schedule:
+  - cron: "0 * * * *"
+```
+
+```yaml Every 6 hours
+schedule:
+  - cron: "0 */6 * * *"
+```
+
+```yaml Once daily at midnight UTC
+schedule:
+  - cron: "0 0 * * *"
+```
+</CodeGroup>
+
+<Info>
+GitHub Actions scheduled workflows use UTC time. The cron syntax is: `minute hour day month weekday`.
+</Info>
+
+## Next steps
+
+Now that you've configured the necessary secrets and parameters, proceed to the [deployment guide](/setup/deployment) to deploy the workflow.

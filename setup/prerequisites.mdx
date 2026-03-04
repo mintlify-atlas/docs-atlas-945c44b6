@@ -1,0 +1,78 @@
+---
+title: Prerequisites
+description: Requirements needed before setting up the Frites 2026 Mirror Driver
+---
+
+Before you begin setting up the mirror workflow, ensure you have the following prerequisites in place.
+
+## GitHub account
+
+You need an active GitHub account with permissions to:
+- Create and manage repositories
+- Add secrets to repository settings
+- Create and modify GitHub Actions workflows
+
+## GitHub repository
+
+You need a GitHub repository where the mirror workflow will run. This repository will:
+- Host the GitHub Actions workflow file
+- Execute the scheduled mirroring job every 10 minutes
+- Require Actions to be enabled (enabled by default on most repositories)
+
+<Note>
+The workflow repository can be separate from the target mirror repository, but using the same repository simplifies management.
+</Note>
+
+## Source GitLab repository access
+
+The workflow mirrors from the following GitLab repository:
+
+```
+https://gitlab.com/ftc-civ/frites/2026.git
+```
+
+You need:
+- The repository to be publicly accessible, OR
+- Appropriate credentials if the repository is private
+
+<Info>
+The current workflow configuration assumes the GitLab repository is publicly accessible. If your source repository is private, you'll need to modify the clone URL to include authentication credentials.
+</Info>
+
+## Target GitHub repository access
+
+The workflow mirrors to the following GitHub repository:
+
+```
+https://github.com/Thibault-Monnier/frites-2026.git
+```
+
+You need:
+- Write access to the target repository
+- Permission to create a personal access token with `repo` scope
+- The target repository must exist before running the workflow
+
+<Warning>
+The mirror operation uses `git push --mirror`, which will overwrite all branches and tags in the target repository. Ensure you don't have any unique commits in the target repository that aren't in the source.
+</Warning>
+
+## Required permissions
+
+To successfully set up and run the mirror workflow, you need:
+
+### On the workflow repository
+- **Admin** or **Write** access to create workflows
+- Permission to add repository secrets
+- GitHub Actions enabled
+
+### On the target mirror repository
+- **Write** or **Admin** access
+- Ability to create personal access tokens with `repo` scope
+
+<Note>
+If you're setting this up in an organization, you may need organization owner permissions or specific repository admin rights to manage secrets and workflows.
+</Note>
+
+## Next steps
+
+Once you've confirmed all prerequisites are met, proceed to the [configuration guide](/setup/configuration) to set up the necessary secrets and workflow parameters.
